@@ -143,10 +143,10 @@ void MAMMicrophysics::set_grids(
                       grid_name);
 
   // precipitation liquid mass [kg/m2]
-  add_field<Required>("precip_liq_surf_mass", scalar3d_mid, kg / m2, grid_name);
+  add_field<Required>("precip_liq_surf_mass", scalar2d, kg / m2, grid_name);
 
   // precipitation ice mass [kg/m2]
-  add_field<Required>("precip_ice_surf_mass", scalar3d_mid, kg / m2, grid_name);
+  add_field<Required>("precip_ice_surf_mass", scalar2d, kg / m2, grid_name);
 
   //----------- Variables from other mam4xx processes ------------
   // Number of modes
@@ -167,7 +167,7 @@ void MAMMicrophysics::set_grids(
 
   // For fractional land use
   const FieldLayout vector2d_class =
-      grid_->get_2d_vector_layout(n_land_type, "class");
+      grid_->get_2d_vector_layout(mam4::mo_drydep::n_land_type, "class");
 
   // Fractional land use [fraction]
   add_field<Required>("fraction_landuse", vector2d_class, nondim, grid_name);
@@ -644,12 +644,12 @@ void MAMMicrophysics::run_impl(const double dt) {
       get_field_in("horiz_winds").get_component(1).get_view<const Real **>();
 
   // Liquid precip [kg/m2]
-  const const_view_2d precip_liq_surf_mass =
-      get_field_in("precip_liq_surf_mass").get_view<const Real **>();
+  const const_view_1d precip_liq_surf_mass =
+      get_field_in("precip_liq_surf_mass").get_view<const Real *>();
 
   // Ice precip [kg/m2]
-  const const_view_2d precip_ice_surf_mass =
-      get_field_in("precip_ice_surf_mass").get_view<const Real **>();
+  const const_view_1d precip_ice_surf_mass =
+      get_field_in("precip_ice_surf_mass").get_view<const Real *>();
 
   // Fractional land use [fraction]
   const const_view_2d fraction_landuse =
@@ -845,6 +845,7 @@ void MAMMicrophysics::run_impl(const double dt) {
   const auto qv         = wet_atm_.qv;
   const int month       = timestamp().get_month();  // 1-based
   const int surface_lev = nlev - 1;                 // Surface level
+  const auto & index_season_lai= index_season_lai_;
 
   // loop over atmosphere columns and compute aerosol microphyscs
   Kokkos::parallel_for(
@@ -916,28 +917,14 @@ void MAMMicrophysics::run_impl(const double dt) {
         const auto prain_icol        = ekat::subview(prain, icol);
         const auto work_set_het_icol = ekat::subview(work_set_het, icol);
 
-        // Surface temperature
-        const Real sfc_air_temp = atm.temperature(surface_lev);
-
-        // Surface specific humidity
-        const Real sfc_spec_hum = atm.vapor_mixing_ratio(surface_lev);
-
-        // Surface potential temperature
-        //(FIXME: We followed Fortran, compare it with MAM4xx's potential temp
-        // func)
-        const Real sfc_potential_temp = sfc_air_temp * (1.0 + sfc_spec_hum);
-
-        // Surface pressure at 10m (Followed the fortran code)
-        const Real pressure_10m = dry_atm.p_mid(icol, surface_lev);
-
         // Wind speed at the surface
         const Real wind_speed =
             haero::sqrt(u_wind(icol, surface_lev) * u_wind(icol, surface_lev) +
                         v_wind(icol, surface_lev) * v_wind(icol, surface_lev));
 
         // Total rain at the surface
-        const Real rain = precip_liq_surf_mass(icol, surface_lev) +
-                          precip_ice_surf_mass(icol, surface_lev);
+        const Real rain = precip_liq_surf_mass(icol) +
+                          precip_ice_surf_mass(icol);
 
         // Snow depth on land [m]
         const Real snow_height = snow_depth_land(icol);
@@ -945,14 +932,34 @@ void MAMMicrophysics::run_impl(const double dt) {
         // Downwelling solar flux at the surface (value at interface) [w/m2]
         const Real solar_flux = sw_flux_dn(icol, surface_lev + 1);
 
-        Real fraction_landuse_icol[n_land_type];
-        for(int i = 0; i < n_land_type; ++i) {
+        Real fraction_landuse_icol[mam4::mo_drydep::n_land_type];
+        for(int i = 0; i < mam4::mo_drydep::n_land_type; ++i) {
           fraction_landuse_icol[i] = fraction_landuse(icol, i);
         }
+    int index_season[mam4::mo_drydep::n_land_type];
+  {
 
-        // ????? FIXME: We should get its value after the rebase
-        const int col_index_season[mam4::mo_drydep::n_land_type] = {
-            1, 2, 3, 4, 5, 6, 7, 8, 9};
+       //-------------------------------------------------------------------------------------
+  // define which season (relative to Northern hemisphere climate)
+  //-------------------------------------------------------------------------------------
+
+  //-------------------------------------------------------------------------------------
+  // define season index based on fixed LAI
+  //-------------------------------------------------------------------------------------
+  for (int lt = 0; lt < mam4::mo_drydep::n_land_type; ++lt) {
+    index_season[lt] = index_season_lai(icol, month - 1);
+  }
+
+  //-------------------------------------------------------------------------------------
+  // special case for snow covered terrain
+  //-------------------------------------------------------------------------------------
+  if (snow_height > 0.01) { // BAD_CONSTANT
+    for (int lt = 0; lt < mam4::mo_drydep::n_land_type; ++lt) {
+      index_season[lt] = 3;
+    }
+  }
+
+    }
         // These output values need to be put somewhere:
         Real dvel[gas_pcnst] = {};  // deposition velocity [1/cm/s]
         Real dflx[gas_pcnst] = {};  // deposition flux [1/cm^2/s]
@@ -960,9 +967,10 @@ void MAMMicrophysics::run_impl(const double dt) {
         // Output: values are dvel, dvlx
         // Input/Output: progs::stateq, progs::qqcw
         mam4::microphysics::perform_atmospheric_chemistry_and_microphysics(
-            team, dt, rlats, month, sfc_temperature(icol), sfc_air_temp,
-            sfc_potential_temp, sfc_pressure(icol), pressure_10m, sfc_spec_hum,
-            wind_speed, rain, snow_height, solar_flux, cnst_offline_icol,
+            team, dt, rlats, sfc_temperature(icol),
+            sfc_pressure(icol),
+            wind_speed, rain,
+            solar_flux, cnst_offline_icol,
             forcings_in, atm, photo_table, chlorine_loading, config.setsox,
             config.amicphys, config.linoz.psc_T, zenith_angle(icol),
             d_sfc_alb_dir_vis(icol), o3_col_dens_i, photo_rates_icol,
@@ -971,9 +979,7 @@ void MAMMicrophysics::run_impl(const double dt) {
             linoz_PmL_clim_icol, linoz_dPmL_dO3_icol, linoz_dPmL_dT_icol,
             linoz_dPmL_dO3col_icol, linoz_cariolle_pscs_icol, eccf,
             adv_mass_kg_per_moles, fraction_landuse_icol,
-
-            col_index_season,  // FIXME: Get it after Changes sync with E3SM
-
+            index_season,
             clsmap_4, permute_4, offset_aerosol, config.linoz.o3_sfc,
             config.linoz.o3_tau, config.linoz.o3_lbl, dry_diameter_icol,
             wet_diameter_icol, wetdens_icol, dry_atm.phis(icol), cmfdqr,

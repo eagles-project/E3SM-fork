@@ -202,7 +202,6 @@ void MAMDryDep::set_grids(
 
   // Fractional land use [fraction]
   add_field<Computed>("fraction_landuse", vector2d_class, nondim, grid_name);
-
   // -------------------------------------------------------------
   // setup to enable reading fractional land use file
   // -------------------------------------------------------------
@@ -381,7 +380,6 @@ void MAMDryDep::initialize_impl(const RunType run_type) {
 
   // Copy fractional landuse values to a FM array to be used by other processes
   Kokkos::deep_copy(frac_landuse_fm_, frac_landuse_);
-
   //-----------------------------------------------------------------
   // Setup preprocessing and post processing
   //-----------------------------------------------------------------
