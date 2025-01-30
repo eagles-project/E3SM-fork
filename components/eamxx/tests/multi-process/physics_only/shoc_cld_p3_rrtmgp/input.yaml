@@ -64,8 +64,11 @@ initial_conditions:
   aero_ssa_sw: 0.0
   aero_tau_sw: 0.0
   aero_tau_lw: 0.0
+  hetfrz_immersion_nucleation_tend: 0.1
+  hetfrz_contact_nucleation_tend: 0.1
+  hetfrz_deposition_nucleation_tend: 0.1
 
 # The parameters for I/O control
 Scorpio:
-  output_yaml_files: ["output.yaml"]
+ output_yaml_files: ["output.yaml"]
 ...
