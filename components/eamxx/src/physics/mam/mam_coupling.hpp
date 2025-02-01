@@ -809,7 +809,7 @@ void compute_recipical_pseudo_density(haero::ThreadTeamPolicy team_policy,
                                       const int nlev,
                                       // output
                                       view_2d rpdel) {
-  Kokkos::parallel_for(
+  Kokkos::parallel_for("compute_recipical_pseudo_density",
       team_policy, KOKKOS_LAMBDA(const haero::ThreadTeam &team) {
         const int icol = team.league_rank();
         Kokkos::parallel_for(
@@ -828,7 +828,7 @@ void copy_view_lev_slice(haero::ThreadTeamPolicy team_policy, //inputs
                          const int dim,                       //dimension till view should be copied
                          view_2d &out_view) {                 //output view
 
-  Kokkos::parallel_for(
+  Kokkos::parallel_for("copy_view_lev_slice",
       team_policy, KOKKOS_LAMBDA(const haero::ThreadTeam &team) {
         const int icol = team.league_rank();
         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, dim), [&](int kk) {

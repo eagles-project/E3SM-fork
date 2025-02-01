@@ -33,6 +33,9 @@ initial_conditions:
   surf_lw_flux_up: 400.0
   eddy_diff_mom: 0.02
   sgs_buoy_flux: -0.001
+  hetfrz_immersion_nucleation_tend: 0.1
+  hetfrz_contact_nucleation_tend: 0.1
+  hetfrz_deposition_nucleation_tend: 0.1
 
 atmosphere_processes:
   atm_procs_list: [sc_import,homme,physics]

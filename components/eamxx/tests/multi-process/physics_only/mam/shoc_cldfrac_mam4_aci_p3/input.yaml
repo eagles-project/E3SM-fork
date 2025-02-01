@@ -34,6 +34,7 @@ atmosphere_processes:
       Ckm: 0.1
     mam4_aci:
       wsubmin: 0.001
+      enable_aero_vertical_mix: true
       top_level_mam4xx: 6
 
 grids_manager:
@@ -58,6 +59,9 @@ initial_conditions:
   #variable required for p3
   precip_ice_surf_mass: 0.0
   precip_liq_surf_mass: 0.0
+  hetfrz_immersion_nucleation_tend: 0.1
+  hetfrz_contact_nucleation_tend: 0.1
+  hetfrz_deposition_nucleation_tend: 0.1
 
   #variables required for mam4_aci
   dgnum: 1e-3
