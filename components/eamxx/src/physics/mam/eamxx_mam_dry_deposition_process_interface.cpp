@@ -172,13 +172,13 @@ void MAMDryDep::set_grids(
   for(int m = 0; m < num_aero_modes; ++m) {
     const char *cld_nmr_field_name = mam_coupling::cld_aero_nmr_field_name(m);
 
-    add_field<Updated>(cld_nmr_field_name, scalar3d_mid, n_unit, grid_name);
+    add_tracer<Updated>(cld_nmr_field_name, grid_, n_unit);
     for(int a = 0; a < mam_coupling::num_aero_species(); ++a) {
       const char *cld_mmr_field_name =
           mam_coupling::cld_aero_mmr_field_name(m, a);
 
       if(strlen(cld_mmr_field_name) > 0) {
-        add_field<Updated>(cld_mmr_field_name, scalar3d_mid, q_unit, grid_name);
+        add_tracer<Updated>(cld_mmr_field_name, grid_, q_unit);
       }
     }
   }
