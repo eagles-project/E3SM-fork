@@ -109,7 +109,7 @@ void MAMConstituentFluxes::set_grids(
     // NOT advected
     const std::string cld_nmr_field_name =
         mam_coupling::cld_aero_nmr_field_name(mode);
-    add_field<Updated>(cld_nmr_field_name, scalar3d_mid, n_unit, grid_name);
+    add_tracer<Updated>(cld_nmr_field_name, grid_, n_unit);
 
     for(int a = 0; a < mam_coupling::num_aero_species(); ++a) {
       // (interstitial) aerosol tracers of interest: mass (q) mixing ratios
@@ -124,7 +124,7 @@ void MAMConstituentFluxes::set_grids(
       const std::string cld_mmr_field_name =
           mam_coupling::cld_aero_mmr_field_name(mode, a);
       if(not cld_mmr_field_name.empty()) {
-        add_field<Updated>(cld_mmr_field_name, scalar3d_mid, q_unit, grid_name);
+        add_tracer<Updated>(cld_mmr_field_name, grid_, q_unit);
       }
     }  // end for loop num species
   }    // end for loop for num modes

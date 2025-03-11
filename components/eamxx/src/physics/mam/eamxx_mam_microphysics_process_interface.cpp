@@ -209,13 +209,13 @@ void MAMMicrophysics::set_grids(
   for(int m = 0; m < nmodes; ++m) {
     const char *cld_nmr_field_name = mam_coupling::cld_aero_nmr_field_name(m);
 
-    add_field<Updated>(cld_nmr_field_name, scalar3d_mid, n_unit, grid_name);
+    add_tracer<Updated>(cld_nmr_field_name, grid_, n_unit);
     for(int a = 0; a < mam_coupling::num_aero_species(); ++a) {
       const char *cld_mmr_field_name =
           mam_coupling::cld_aero_mmr_field_name(m, a);
 
       if(strlen(cld_mmr_field_name) > 0) {
-        add_field<Updated>(cld_mmr_field_name, scalar3d_mid, q_unit, grid_name);
+        add_tracer<Updated>(cld_mmr_field_name, grid_, q_unit);
       }
     }  // for loop species
   }    // for loop nmodes cld borne
@@ -991,7 +991,7 @@ void MAMMicrophysics::run_impl(const double dt) {
         // constituent_fluxes is kg/m2/s) (Following mimics Fortran code
         // behavior but we should look into it)
         for(int ispc = offset_aerosol; ispc < mam4::pcnst; ++ispc) {
-          constituent_fluxes(icol, ispc) = dflx[ispc - offset_aerosol];
+          constituent_fluxes(icol, ispc) -= dflx[ispc - offset_aerosol];
         }
       });  // parallel_for for the column loop
   Kokkos::fence();
